@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dino Run: Larian Dino (Kindy Klub Edition)</title>
+  <!-- Google Font Quicksand -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@700;800;900&display=swap" rel="stylesheet">
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      box-sizing: border-box;
+      touch-action: manipulation;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Quicksand', sans-serif;
+      background: linear-gradient(180deg, #38BDF8 0%, #BAE6FD 100%);
+    }
+
+    /* Chunky Mario-Style Craft Push Buttons */
+    .btn-mario {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      border-radius: 9999px;
+      border: 4px solid #FFFFFF;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-mario:active {
+      transform: translateY(4px);
+    }
+
+    .btn-green {
+      background: linear-gradient(180deg, #10B981 0%, #059669 100%);
+      box-shadow: 0 8px 0 #047857, 0 12px 14px rgba(0,0,0,0.25);
+      color: #FFFFFF;
+    }
+    .btn-green:active {
+      box-shadow: 0 4px 0 #047857, 0 6px 8px rgba(0,0,0,0.25);
+    }
+
+    .btn-yellow {
+      background: linear-gradient(180deg, #FDE047 0%, #F59E0B 100%);
+      box-shadow: 0 8px 0 #B45309, 0 12px 14px rgba(0,0,0,0.25);
+      color: #78350F;
+    }
+    .btn-yellow:active {
+      box-shadow: 0 4px 0 #B45309, 0 6px 8px rgba(0,0,0,0.25);
+    }
+
+    .btn-orange {
+      background: linear-gradient(180deg, #FB923C 0%, #EA580C 100%);
+      box-shadow: 0 8px 0 #9A3412, 0 12px 14px rgba(0,0,0,0.25);
+      color: #FFFFFF;
+    }
+    .btn-orange:active {
+      box-shadow: 0 4px 0 #9A3412, 0 6px 8px rgba(0,0,0,0.25);
+    }
+
+    .btn-blue {
+      background: linear-gradient(180deg, #60A5FA 0%, #2563EB 100%);
+      box-shadow: 0 8px 0 #1E3A8A, 0 12px 14px rgba(0,0,0,0.25);
+      color: #FFFFFF;
+    }
+    .btn-blue:active {
+      box-shadow: 0 4px 0 #1E3A8A, 0 6px 8px rgba(0,0,0,0.25);
+    }
+
+    /* Crafted Stitched Badges & Cards */
+    .craft-card {
+      background: #FFFBEB;
+      border: 5px solid #F59E0B;
+      box-shadow: 0 10px 0 #D97706, 0 18px 24px rgba(0,0,0,0.2);
+      border-radius: 28px;
+      position: relative;
+    }
+    .craft-card::after {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border: 3px dashed #FCD34D;
+      border-radius: 22px;
+      pointer-events: none;
+    }
+
+    /* Juicy Target Prompt Ribbon */
+    .hud-ribbon {
+      background: linear-gradient(180deg, #FEF08A 0%, #FBBF24 100%);
+      border: 4px solid #FFFFFF;
+      box-shadow: 0 6px 0 #D97706, 0 10px 15px rgba(0,0,0,0.2);
+      border-radius: 24px;
+    }
+
+    @keyframes gentlePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+    .pulse-target {
+      animation: gentlePulse 1.6s ease-in-out infinite;
+    }
+
+    .lane-active {
+      transform: scale(1.08) translateY(-2px);
+      box-shadow: 0 0 0 4px #FDE047, 0 10px 0 #B45309, 0 14px 18px rgba(0,0,0,0.3) !important;
+    }
+  </style>
+</head>
+<body class="w-full h-full relative select-none">
+
+  <!-- 3D Three.js Canvas Container -->
+  <div id="canvas-container" class="absolute inset-0 w-full h-full z-0"></div>
+
+  <!-- IN-GAME HUD OVERLAY -->
+  <div id="game-hud" class="absolute inset-0 pointer-events-none z-20 hidden flex flex-col justify-between p-3 md:p-6">
+    <!-- Top HUD Bar -->
+    <div class="flex items-center justify-between w-full max-w-4xl mx-auto pointer-events-auto">
+      <!-- Back to Menu button -->
+      <button id="btn-back-menu" class="btn-mario btn-orange px-4 py-2 text-sm md:text-base flex items-center gap-2">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+        <span class="lang-txt" data-bm="MENU" data-en="MENU">MENU</span>
+      </button>
+
+      <!-- Center Target Prompt Ribbon -->
+      <div class="hud-ribbon px-4 md:px-8 py-2 md:py-3 flex items-center gap-3 pulse-target">
+        <div class="w-9 h-9 md:w-11 md:h-11 flex-shrink-0 flex items-center justify-center">
+          <svg class="w-full h-full drop-shadow" viewBox="0 0 48 48">
+            <path fill="#22C55E" stroke="#15803D" stroke-width="2.5" d="M24 4C14 4 6 16 6 26c0 10 8 18 18 18s18-8 18-18c0-10-8-22-18-22z"/>
+            <path fill="#86EFAC" d="M24 9c-7 0-12 8-12 15 0 7 5 12 12 12s12-5 12-12c0-7-5-15-12-15z"/>
+            <path fill="none" stroke="#15803D" stroke-width="2.5" stroke-linecap="round" d="M24 12v26M24 24l-6-6M24 28l7-6"/>
+          </svg>
+        </div>
+        <div class="text-center">
+          <div class="text-xs md:text-sm font-extrabold text-amber-900 tracking-wide" id="prompt-subtitle">
+            CARI & MAKAN!
+          </div>
+          <div class="text-lg md:text-2xl font-black text-emerald-900 flex items-center justify-center gap-2" id="prompt-main">
+            5 DAUN
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sound & Score Cluster -->
+      <div class="flex items-center gap-2">
+        <button id="btn-toggle-sound" class="btn-mario btn-yellow p-2.5">
+          <svg id="icon-sound-on" class="w-6 h-6 fill-amber-950" viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>
+          <svg id="icon-sound-off" class="w-6 h-6 fill-amber-950 hidden" viewBox="0 0 24 24">
+            <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+          </svg>
+        </button>
+
+        <!-- Progress Leaf Counters (1 to 5) -->
+        <div class="hud-ribbon px-3 py-1.5 flex items-center gap-1.5" id="progress-indicators">
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Chunky Action Touch Controls -->
+    <div class="w-full max-w-2xl mx-auto flex items-end justify-between gap-3 pointer-events-auto pb-2">
+      <!-- 3 Height Lane Buttons (Direct Level Jump for Little Hands) -->
+      <div class="flex items-center gap-2 bg-amber-900/40 backdrop-blur-sm p-2 rounded-3xl border-2 border-white/70 shadow-lg">
+        <button id="btn-lane-1" class="btn-mario btn-yellow px-4 py-3 text-xs md:text-sm flex items-center justify-center">
+          <span class="font-black tracking-wide lang-txt" data-bm="BAWAH" data-en="LOW">BAWAH</span>
+        </button>
+        <button id="btn-lane-2" class="btn-mario btn-orange px-4 py-3 text-xs md:text-sm flex items-center justify-center">
+          <span class="font-black tracking-wide lang-txt" data-bm="TENGAH" data-en="MID">TENGAH</span>
+        </button>
+        <button id="btn-lane-3" class="btn-mario btn-blue px-4 py-3 text-xs md:text-sm flex items-center justify-center">
+          <span class="font-black tracking-wide lang-txt" data-bm="ATAS" data-en="HIGH">ATAS</span>
+        </button>
+      </div>
+
+      <!-- Big Spring JUMP Button -->
+      <button id="btn-jump-action" class="btn-mario btn-green px-8 md:px-12 py-4 md:py-5 text-xl md:text-2xl flex items-center gap-3">
+        <svg class="w-7 h-7 md:w-8 md:h-8 fill-current drop-shadow" viewBox="0 0 24 24">
+          <path d="M12 4l-8 8h5v8h6v-8h5z"/>
+        </svg>
+        <span class="lang-txt" data-bm="LOMPAT!" data-en="JUMP!">LOMPAT!</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- FRONT PAGE (LANDING SCREEN) -->
+  <div id="front-screen" class="absolute inset-0 z-30 flex flex-col items-center justify-between p-4 md:p-6 overflow-y-auto">
+    <!-- Header with Bilingual Switcher & Brand Badge -->
+    <div class="w-full max-w-4xl flex items-center justify-between">
+      <!-- Kindy Klub Logo Pill -->
+      <div class="bg-white/90 border-4 border-emerald-600 rounded-full px-4 py-1.5 shadow-lg flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center">
+          <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+          </svg>
+        </div>
+        <span class="font-extrabold text-emerald-900 text-sm md:text-base tracking-wide">KINDY KLUB</span>
+      </div>
+
+      <!-- Bilingual Toggle: Custom SVG Flags -->
+      <div class="flex items-center bg-white/90 border-4 border-amber-500 rounded-full p-1 shadow-lg">
+        <button id="btn-lang-bm" class="flex items-center gap-1.5 px-3 py-1 rounded-full font-black text-xs md:text-sm transition-all bg-amber-500 text-white shadow">
+          <svg class="w-5 h-3.5 rounded-sm overflow-hidden" viewBox="0 0 640 480">
+            <rect width="640" height="480" fill="#CC0000"/>
+            <path fill="#FFFFFF" d="M0 34.3h640v34.3H0zm0 68.6h640v34.3H0zm0 68.6h640v34.3H0zm0 68.6h640v34.3H0zm0 68.6h640v34.3H0zm0 68.6h640v34.3H0z"/>
+            <rect width="320" height="240" fill="#000066"/>
+            <circle cx="160" cy="120" r="75" fill="#FFCC00"/>
+            <circle cx="180" cy="120" r="65" fill="#000066"/>
+          </svg>
+          BM
+        </button>
+        <button id="btn-lang-en" class="flex items-center gap-1.5 px-3 py-1 rounded-full font-black text-xs md:text-sm transition-all text-amber-900 hover:bg-amber-100">
+          <svg class="w-5 h-3.5 rounded-sm overflow-hidden" viewBox="0 0 640 480">
+            <rect width="640" height="480" fill="#012169"/>
+            <path d="M0 0l640 480m0-480L0 480" stroke="#FFF" stroke-width="60"/>
+            <path d="M0 0l640 480m0-480L0 480" stroke="#C8102E" stroke-width="30"/>
+            <path d="M320 0v480M0 240h640" stroke="#FFF" stroke-width="100"/>
+            <path d="M320 0v480M0 240h640" stroke="#C8102E" stroke-width="60"/>
+          </svg>
+          EN
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Title Card with Yoshi-Crafted styling -->
+    <div class="my-auto flex flex-col items-center max-w-xl w-full text-center py-4">
+      <div class="mb-3">
+        <div class="inline-block bg-white/95 px-6 py-2 rounded-full border-4 border-amber-400 shadow-md">
+          <span id="edition-badge" class="text-xs md:text-sm font-black text-amber-700 tracking-wider lang-txt" data-bm="EDISI KANAK-KANAK PRASEKOLAH" data-en="PRESCHOOL KIDS EDITION">
+            EDISI KANAK-KANAK PRASEKOLAH
+          </span>
+        </div>
+      </div>
+
+      <!-- High Contrast Title Banner -->
+      <div class="relative bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 text-white px-6 md:px-10 py-4 rounded-3xl border-4 border-white shadow-[0_10px_0_#065F46,0_18px_25px_rgba(0,0,0,0.3)] w-full">
+        <h1 class="text-3xl md:text-5xl font-black tracking-wider drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)]" id="hero-title">
+          LARIAN DINO
+        </h1>
+        <p class="text-yellow-300 font-extrabold text-sm md:text-lg tracking-widest mt-1" id="hero-subtitle">
+          LARIAN DINO: KINDY KLUB
+        </p>
+      </div>
+
+      <!-- Mode / Age Tier Selector -->
+      <div class="w-full mt-6 grid grid-cols-2 gap-3 md:gap-4">
+        <!-- Tier 1 (3-4 Years) -->
+        <button id="btn-tier-1" class="craft-card p-3 md:p-4 text-left border-4 border-emerald-500 bg-white ring-4 ring-emerald-400 transition transform hover:-translate-y-1">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-black uppercase text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full lang-txt" data-bm="TAHAP 1 (3-4 THN)" data-en="TIER 1 (3-4 YRS)">TAHAP 1 (3-4 THN)</span>
+            <svg class="w-5 h-5 fill-emerald-600" viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+          </div>
+          <h3 class="text-base md:text-lg font-black text-emerald-950 lang-txt" data-bm="Kira Daun (1-5)" data-en="Count Leaves (1-5)">Kira Daun (1-5)</h3>
+          <p class="text-xs text-amber-900 font-bold mt-0.5 lang-txt" data-bm="Kenal nombor & bentuk mudah" data-en="Simple counting & numbers">Kenal nombor & bentuk mudah</p>
+        </button>
+
+        <!-- Tier 2 (5-6 Years) -->
+        <button id="btn-tier-2" class="craft-card p-3 md:p-4 text-left border-4 border-amber-300 bg-amber-50/70 transition transform hover:-translate-y-1 opacity-90">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-black uppercase text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full lang-txt" data-bm="TAHAP 2 (5-6 THN)" data-en="TIER 2 (5-6 YRS)">TAHAP 2 (5-6 THN)</span>
+            <div class="w-4 h-4 rounded-full border-2 border-amber-400"></div>
+          </div>
+          <h3 class="text-base md:text-lg font-black text-amber-950 lang-txt" data-bm="Tambah Buah (1-10)" data-en="Fruit Math (1-10)">Tambah Buah (1-10)</h3>
+          <p class="text-xs text-amber-900 font-bold mt-0.5 lang-txt" data-bm="Operasi tambah riang prasekolah" data-en="Fun playful addition sum">Operasi tambah riang prasekolah</p>
+        </button>
+      </div>
+
+      <!-- How to play visual card -->
+      <div class="bg-white/90 border-2 border-emerald-400 rounded-2xl p-3 mt-4 text-xs md:text-sm font-bold text-emerald-950 flex items-center gap-3 text-left w-full shadow">
+        <div class="w-10 h-10 rounded-xl bg-emerald-100 flex-shrink-0 flex items-center justify-center">
+          <svg class="w-6 h-6 fill-emerald-600" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+          </svg>
+        </div>
+        <p id="how-to-play-text" class="lang-txt" data-bm="Tekan LOMPAT atau butang BAWAH, TENGAH, ATAS untuk suap Dino daun dengan nombor yang betul!" data-en="Tap JUMP or LOW, MID, HIGH buttons to feed Dino the leaves with the right target number!">
+          Tekan LOMPAT atau butang BAWAH, TENGAH, ATAS untuk suap Dino daun dengan nombor yang betul!
+        </p>
+      </div>
+
+      <!-- Big Start Button -->
+      <div class="mt-6 w-full flex flex-col items-center">
+        <button id="btn-start-game" class="btn-mario btn-green w-full py-4 md:py-5 text-2xl md:text-3xl tracking-wider shadow-2xl flex items-center justify-center gap-3">
+          <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <span class="lang-txt" data-bm="MULA MAIN!" data-en="START GAME!">MULA MAIN!</span>
+        </button>
+
+        <!-- Device High Score Badge -->
+        <div class="mt-3 flex items-center gap-2 bg-amber-900/10 px-4 py-1.5 rounded-full">
+          <svg class="w-4 h-4 fill-amber-500" viewBox="0 0 24 24">
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+          </svg>
+          <span class="text-xs font-black text-amber-900" id="high-score-display">
+            SKOR TERTINGGI: 0 BINTANG
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commercial Footer -->
+    <div class="w-full text-center pb-2">
+      <p class="text-xs md:text-sm font-bold text-slate-700 tracking-wide">
+        Made by <span class="font-extrabold text-emerald-800">Kindy Klub</span> | All Rights Reserved
+      </p>
+    </div>
+  </div>
+
+  <!-- VICTORY CELEBRATION MODAL -->
+  <div id="victory-modal" class="absolute inset-0 z-40 bg-sky-950/70 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="craft-card p-6 md:p-8 max-w-md w-full text-center flex flex-col items-center">
+      <!-- 3 Victory Stars (Pure SVG) -->
+      <div class="flex items-center justify-center gap-2 mb-4">
+        <svg class="w-12 h-12 fill-amber-400 stroke-amber-600 stroke-[1.5] drop-shadow-md" viewBox="0 0 24 24">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+        </svg>
+        <svg class="w-16 h-16 fill-amber-400 stroke-amber-600 stroke-[1.5] drop-shadow-lg -translate-y-2" viewBox="0 0 24 24">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+        </svg>
+        <svg class="w-12 h-12 fill-amber-400 stroke-amber-600 stroke-[1.5] drop-shadow-md" viewBox="0 0 24 24">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+        </svg>
+      </div>
+
+      <h2 class="text-3xl md:text-4xl font-black text-emerald-900 mb-1" id="vic-heading">
+        TAHNIAH!
+      </h2>
+      <p class="text-amber-800 font-extrabold text-base md:text-lg mb-4" id="vic-sub">
+        Dino kenyang & sangat gembira!
+      </p>
+
+      <div class="bg-amber-100/90 border-2 border-amber-300 rounded-2xl px-6 py-3 mb-6 w-full">
+        <span class="text-xs uppercase font-extrabold text-amber-700" id="vic-score-title">SKOR PUSINGAN</span>
+        <div class="text-3xl font-black text-amber-950 mt-0.5" id="vic-score-num">5 / 5 ★</div>
+      </div>
+
+      <div class="flex flex-col gap-3 w-full">
+        <button id="btn-replay" class="btn-mario btn-green py-3.5 text-xl tracking-wide w-full flex items-center justify-center gap-2">
+          <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+          <span class="lang-txt" data-bm="MAIN LAGI!" data-en="PLAY AGAIN!">MAIN LAGI!</span>
+        </button>
+
+        <button id="btn-home-from-vic" class="btn-mario btn-yellow py-3 text-base tracking-wide w-full">
+          <span class="lang-txt" data-bm="MENU UTAMA" data-en="MAIN MENU">MENU UTAMA</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Safe storage helper prevents sandboxed iframe errors
+    const SafeStorage = {
+      get(key, fallback = '0') {
+        try {
+          return localStorage.getItem(key) || fallback;
+        } catch (e) {
+          return fallback;
+        }
+      },
+      set(key, val) {
+        try {
+          localStorage.setItem(key, val);
+        } catch (e) {}
+      }
+    };
+
+    /* Pure Web Audio API Sound Synthesizer */
+    const SoundEngine = {
+      ctx: null,
+      enabled: true,
+
+      init() {
+        if (!this.ctx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            this.ctx = new AudioContextClass();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+
+      playJump() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(540, now + 0.16);
+
+          gain.gain.setValueAtTime(0.28, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.23);
+        } catch (e) {}
+      },
+
+      playEatYum() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [440, 660, 880].forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = now + (i * 0.06);
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, start);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.25, start + 0.08);
+
+            gain.gain.setValueAtTime(0.25, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(start);
+            osc.stop(start + 0.13);
+          });
+        } catch (e) {}
+      },
+
+      playWobble() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(150, now + 0.2);
+
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.23);
+        } catch (e) {}
+      },
+
+      playBonk() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(260, now);
+          osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.16);
+        } catch (e) {}
+      },
+
+      playWinFanfare() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const notes = [392, 523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((pitch, idx) => {
+            const start = this.ctx.currentTime + (idx * 0.11);
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(pitch, start);
+
+            gain.gain.setValueAtTime(0.3, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(start);
+            osc.stop(start + 0.36);
+          });
+        } catch (e) {}
+      }
+    };
+
+    /* State Manager */
+    const State = {
+      lang: 'bm',
+      tier: 1,
+      score: 0,
+      targetGoal: 5,
+      completedRuns: 0,
+      soundOn: true,
+      highScore: parseInt(SafeStorage.get('kindy_dino_hiscore', '0'), 10),
+      currentQuestion: null,
+      isPlaying: false
+    };
+
+    const i18n = {
+      bm: {
+        title: "LARIAN DINO",
+        subtitle: "LARIAN DINO: KINDY KLUB",
+        editionBadge: "EDISI KANAK-KANAK PRASEKOLAH",
+        tier1Title: "Kira Daun (1-5)",
+        tier1Sub: "Kenal nombor & bentuk mudah",
+        tier2Title: "Tambah Buah (1-10)",
+        tier2Sub: "Operasi tambah riang prasekolah",
+        howToPlay: "Tekan LOMPAT atau butang BAWAH, TENGAH, ATAS untuk suap Dino daun dengan nombor yang betul!",
+        btnStart: "MULA MAIN!",
+        highScorePrefix: "SKOR TERTINGGI: ",
+        starsSuffix: " BINTANG",
+        promptSearch: "CARI & MAKAN!",
+        promptFeedLeaf: "DAUN",
+        promptFeedFruit: "BUAH",
+        jumpBtn: "LOMPAT!",
+        laneLow: "BAWAH",
+        laneMid: "TENGAH",
+        laneHigh: "ATAS",
+        menuBtn: "MENU",
+        vicHeading: "TAHNIAH! HEBAT!",
+        vicSub: "Dino kenyang & sangat gembira!",
+        vicScoreTitle: "SKOR PUSINGAN",
+        playAgain: "MAIN LAGI!",
+        mainMenu: "MENU UTAMA"
+      },
+      en: {
+        title: "DINO RUN",
+        subtitle: "DINO RUN: KINDY KLUB",
+        editionBadge: "PRESCHOOL KIDS EDITION",
+        tier1Title: "Count Leaves (1-5)",
+        tier1Sub: "Simple counting & numbers",
+        tier2Title: "Fruit Math (1-10)",
+        tier2Sub: "Fun playful addition sums",
+        howToPlay: "Tap JUMP or LOW, MID, HIGH buttons to feed Dino the leaves with the right target number!",
+        btnStart: "START GAME!",
+        highScorePrefix: "HIGH SCORE: ",
+        starsSuffix: " STARS",
+        promptSearch: "FIND & MUNCH!",
+        promptFeedLeaf: "LEAVES",
+        promptFeedFruit: "FRUITS",
+        jumpBtn: "JUMP!",
+        laneLow: "LOW",
+        laneMid: "MID",
+        laneHigh: "HIGH",
+        menuBtn: "MENU",
+        vicHeading: "HOORAY! AWESOME!",
+        vicSub: "Dino is full and dancing happily!",
+        vicScoreTitle: "ROUND SCORE",
+        playAgain: "PLAY AGAIN!",
+        mainMenu: "MAIN MENU"
+      }
+    };
+
+    function updatePromptDisplay() {
+      if (!State.currentQuestion) return;
+      const q = State.currentQuestion;
+      const promptMainEl = document.getElementById('prompt-main');
+      if (!promptMainEl) return;
+
+      if (State.tier === 1) {
+        const leafWord = State.lang === 'bm' ? i18n.bm.promptFeedLeaf : i18n.en.promptFeedLeaf;
+        promptMainEl.textContent = `${q.target} ${leafWord}`;
+      } else {
+        const fruitWord = State.lang === 'bm' ? i18n.bm.promptFeedFruit : i18n.en.promptFeedFruit;
+        promptMainEl.textContent = `${q.a} + ${q.b} = ? (${q.target} ${fruitWord})`;
+      }
+    }
+
+    function applyTranslations() {
+      const t = i18n[State.lang];
+      document.getElementById('hero-title').textContent = t.title;
+      document.getElementById('hero-subtitle').textContent = t.subtitle;
+      
+      const badgeEl = document.getElementById('edition-badge');
+      if (badgeEl) badgeEl.textContent = t.editionBadge;
+
+      document.getElementById('high-score-display').textContent = `${t.highScorePrefix}${State.highScore}${t.starsSuffix}`;
+      document.getElementById('prompt-subtitle').textContent = t.promptSearch;
+      document.getElementById('vic-heading').textContent = t.vicHeading;
+      document.getElementById('vic-sub').textContent = t.vicSub;
+      document.getElementById('vic-score-title').textContent = t.vicScoreTitle;
+
+      document.querySelectorAll('.lang-txt').forEach(el => {
+        const val = el.getAttribute(`data-${State.lang}`);
+        if (val) el.textContent = val;
+      });
+
+      updatePromptDisplay();
+
+      const bmBtn = document.getElementById('btn-lang-bm');
+      const enBtn = document.getElementById('btn-lang-en');
+      if (State.lang === 'bm') {
+        bmBtn.className = "flex items-center gap-1.5 px-3 py-1 rounded-full font-black text-xs md:text-sm bg-amber-500 text-white shadow";
+        enBtn.className = "flex items-center gap-1.5 px-3 py-1 rounded-full font-black text-xs md:text-sm text-amber-900 hover:bg-amber-100";
+      } else {
+        enBtn.className = "flex items-center gap-1.5 px-3 py-1 rounded-full font-black text-xs md:text-sm bg-amber-500 text-white shadow";
+        bmBtn.className = "flex items-center gap-1.5 px-3 py-1 rounded-full font-black text-xs md:text-sm text-amber-900 hover:bg-amber-100";
+      }
+    }
+
+    function highlightActiveLaneUI(laneNum) {
+      const b1 = document.getElementById('btn-lane-1');
+      const b2 = document.getElementById('btn-lane-2');
+      const b3 = document.getElementById('btn-lane-3');
+      if (!b1 || !b2 || !b3) return;
+      [b1, b2, b3].forEach((btn, idx) => {
+        if (idx + 1 === laneNum) {
+          btn.classList.add('lane-active');
+        } else {
+          btn.classList.remove('lane-active');
+        }
+      });
+    }
+
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0xBAE6FD, 35, 110);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
+    camera.position.set(0, 6.5, 23);
+    camera.lookAt(0, 4.5, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0x93C5FD, 0.85);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xFFFBEB, 1.15);
+    dirLight.position.set(12, 28, 16);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    scene.add(dirLight);
+
+    // Far background rolling hills
+    const backgroundGroup = new THREE.Group();
+    scene.add(backgroundGroup);
+
+    const hillMat1 = new THREE.MeshLambertMaterial({ color: 0x4ADE80 });
+    const hillMat2 = new THREE.MeshLambertMaterial({ color: 0x22C55E });
+    const hillGeo = new THREE.SphereGeometry(14, 18, 14);
+
+    for (let i = -6; i <= 12; i++) {
+      const hill = new THREE.Mesh(hillGeo, i % 2 === 0 ? hillMat1 : hillMat2);
+      hill.scale.set(1.5, 0.75, 1);
+      hill.position.set(i * 18, -6, -25 - (Math.abs(i) % 3) * 5);
+      backgroundGroup.add(hill);
+    }
+
+    // Puffy diorama clouds
+    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+    const clouds = [];
+    for (let c = 0; c < 9; c++) {
+      const cloudGroup = new THREE.Group();
+      const puff1 = new THREE.Mesh(new THREE.SphereGeometry(2.2, 12, 10), cloudMat);
+      const puff2 = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 10), cloudMat);
+      const puff3 = new THREE.Mesh(new THREE.SphereGeometry(1.7, 12, 10), cloudMat);
+      puff2.position.set(-1.8, -0.4, 0);
+      puff3.position.set(1.8, -0.4, 0);
+      cloudGroup.add(puff1, puff2, puff3);
+      cloudGroup.position.set(-30 + c * 14, 12 + (c % 3) * 2, -18 - (c % 2) * 4);
+      scene.add(cloudGroup);
+      clouds.push(cloudGroup);
+    }
+
+    const Dino = {
+      root: new THREE.Group(),
+      body: null,
+      belly: null,
+      head: null,
+      snout: null,
+      tail: null,
+      leftLeg: null,
+      rightLeg: null,
+      yVelocity: 0,
+      isJumping: false,
+      currentLane: 1,
+      animTime: 0,
+      bonkTimer: 0,
+
+      init() {
+        const emeraldMat = new THREE.MeshStandardMaterial({
+          color: 0x059669,
+          roughness: 0.35,
+          metalness: 0.1
+        });
+        const yellowMat = new THREE.MeshStandardMaterial({
+          color: 0xFBBF24,
+          roughness: 0.4
+        });
+        const spineMat = new THREE.MeshStandardMaterial({
+          color: 0xFB923C,
+          roughness: 0.3
+        });
+        const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.1 });
+        const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x0F172A });
+        const eyeSparkleMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+        const cheekMat = new THREE.MeshLambertMaterial({ color: 0xF472B6 });
+
+        // Body
+        this.body = new THREE.Mesh(new THREE.SphereGeometry(1.2, 20, 16), emeraldMat);
+        this.body.scale.set(1, 1.25, 0.95);
+        this.body.castShadow = true;
+        this.root.add(this.body);
+
+        // Golden Yellow Belly
+        this.belly = new THREE.Mesh(new THREE.SphereGeometry(1.02, 16, 14), yellowMat);
+        this.belly.scale.set(0.85, 1.1, 0.75);
+        this.belly.position.set(0.35, -0.05, 0);
+        this.root.add(this.belly);
+
+        // Head Group
+        this.head = new THREE.Group();
+        this.head.position.set(0.65, 0.9, 0);
+
+        const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.95, 18, 16), emeraldMat);
+        headMesh.castShadow = true;
+        this.head.add(headMesh);
+
+        // Snout
+        this.snout = new THREE.Mesh(new THREE.SphereGeometry(0.72, 16, 14), emeraldMat);
+        this.snout.position.set(0.65, -0.15, 0);
+        this.snout.scale.set(1.1, 0.85, 0.9);
+        this.head.add(this.snout);
+
+        // Nostrils
+        const nostrilMat = new THREE.MeshBasicMaterial({ color: 0x065F46 });
+        [-0.18, 0.18].forEach(z => {
+          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), nostrilMat);
+          nostril.position.set(1.25, -0.05, z);
+          this.head.add(nostril);
+        });
+
+        // Eyes
+        [-0.45, 0.45].forEach((zOffset) => {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 12), eyeWhiteMat);
+          eye.position.set(0.35, 0.45, zOffset);
+          eye.scale.set(0.8, 1.2, 0.8);
+
+          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), eyePupilMat);
+          pupil.position.set(0.2, 0, 0);
+
+          const shine = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), eyeSparkleMat);
+          shine.position.set(0.08, 0.08, 0);
+          pupil.add(shine);
+
+          eye.add(pupil);
+          this.head.add(eye);
+
+          // Rosy cheek
+          const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), cheekMat);
+          cheek.position.set(0.4, 0.05, zOffset * 1.15);
+          cheek.scale.set(0.6, 0.6, 0.4);
+          this.head.add(cheek);
+        });
+
+        this.root.add(this.head);
+
+        // Orange Plates along spine
+        for (let i = 0; i < 4; i++) {
+          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.65, 5), spineMat);
+          spine.rotation.z = -0.5 + (i * 0.25);
+          spine.position.set(-0.3 - (i * 0.3), 1.0 - (i * 0.28), 0);
+          this.root.add(spine);
+        }
+
+        // Tail
+        this.tail = new THREE.Group();
+        this.tail.position.set(-1.1, -0.2, 0);
+        const tailMesh = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.4, 12), emeraldMat);
+        tailMesh.rotation.z = Math.PI / 2.3;
+        tailMesh.position.set(-0.55, 0, 0);
+        this.tail.add(tailMesh);
+        this.root.add(this.tail);
+
+        // Legs (left and right)
+        const legGeo = new THREE.CylinderGeometry(0.26, 0.28, 0.75, 12);
+        const footGeo = new THREE.SphereGeometry(0.32, 10, 10);
+
+        this.leftLeg = new THREE.Group();
+        this.leftLeg.position.set(0.2, -1.0, 0.55);
+        const lLeg = new THREE.Mesh(legGeo, emeraldMat);
+        const lFoot = new THREE.Mesh(footGeo, emeraldMat);
+        lFoot.scale.set(1.4, 0.65, 0.95);
+        lFoot.position.set(0.2, -0.35, 0);
+        this.leftLeg.add(lLeg, lFoot);
+        this.root.add(this.leftLeg);
+
+        this.rightLeg = new THREE.Group();
+        this.rightLeg.position.set(0.2, -1.0, -0.55);
+        const rLeg = new THREE.Mesh(legGeo, emeraldMat);
+        const rFoot = new THREE.Mesh(footGeo, emeraldMat);
+        rFoot.scale.set(1.4, 0.65, 0.95);
+        rFoot.position.set(0.2, -0.35, 0);
+        this.rightLeg.add(rLeg, rFoot);
+        this.root.add(this.rightLeg);
+
+        this.root.position.set(-5, 1.45, 0);
+        this.root.rotation.y = 0.25;
+        scene.add(this.root);
+      },
+
+      update(delta) {
+        this.animTime += delta * 12;
+
+        if (!this.isJumping) {
+          if (this.leftLeg && this.rightLeg) {
+            this.leftLeg.rotation.z = Math.sin(this.animTime) * 0.6;
+            this.rightLeg.rotation.z = -Math.sin(this.animTime) * 0.6;
+          }
+          if (this.body) {
+            this.body.position.y = Math.abs(Math.sin(this.animTime * 2)) * 0.12;
+          }
+          if (this.tail) {
+            this.tail.rotation.y = Math.sin(this.animTime * 1.5) * 0.3;
+          }
+        } else {
+          if (this.leftLeg && this.rightLeg) {
+            this.leftLeg.rotation.z = 0.4;
+            this.rightLeg.rotation.z = -0.3;
+          }
+          if (this.tail) {
+            this.tail.rotation.z = Math.PI / 6;
+          }
+        }
+
+        // Cartoon squash effect on bonk
+        if (this.bonkTimer > 0) {
+          this.bonkTimer -= delta * 4;
+          const squash = Math.sin(this.bonkTimer * Math.PI) * 0.35;
+          if (this.head) {
+            this.head.scale.set(1 + squash, 1 - squash, 1 + squash);
+          }
+        } else if (this.head) {
+          this.head.scale.set(1, 1, 1);
+        }
+
+        const GROUND_Y = 1.45;
+        let supportedY = GROUND_Y;
+        const dinoX = this.root.position.x;
+        const headTopY = this.root.position.y + 2.15;
+
+        // Check floating platforms under/over Dino
+        for (const cluster of TargetManager.clusters) {
+          if (cluster.userData && cluster.userData.lane > 1) {
+            const laneIndex = cluster.userData.lane - 1;
+            const deckY = laneDeckHeights[laneIndex];
+            const plankDeckY = deckY + 1.45;
+            const plankBottomY = deckY - 0.45;
+            const dx = dinoX - cluster.position.x;
+
+            if (dx >= -3.5 && dx <= 3.5) {
+              // 1. CEILING COLLISION (Head hits plank underside)
+              if (this.isJumping && this.yVelocity > 0) {
+                if (headTopY >= plankBottomY && this.root.position.y < plankDeckY - 0.4) {
+                  this.root.position.y = plankBottomY - 2.15;
+                  this.yVelocity = -0.15;
+                  this.bonkTimer = 1.0;
+                  SoundEngine.playBonk();
+                  spawnStarBursts(dinoX + 0.3, plankBottomY, 0);
+                }
+              }
+
+              // 2. FLOOR SUPPORT (Landing on top of plank)
+              if (this.root.position.y >= plankDeckY - 0.4) {
+                if (plankDeckY > supportedY) {
+                  supportedY = plankDeckY;
+                }
+              }
+            }
+          }
+        }
+
+        if (this.isJumping) {
+          this.root.position.y += this.yVelocity * delta * 60;
+          this.yVelocity -= 0.042 * delta * 60;
+
+          if (this.yVelocity <= 0 && this.root.position.y <= supportedY + 0.15) {
+            this.root.position.y = supportedY;
+            this.isJumping = false;
+            this.yVelocity = 0;
+            spawnStarBursts(this.root.position.x, this.root.position.y - 0.7, 0);
+          }
+        } else {
+          // Standing on plank or ground
+          if (this.root.position.y > GROUND_Y + 0.2) {
+            if (supportedY <= GROUND_Y) {
+              // Plank ran out, naturally fall
+              this.isJumping = true;
+              this.yVelocity = -0.06;
+            } else {
+              this.root.position.y += (supportedY - this.root.position.y) * 0.35;
+            }
+          } else {
+            this.root.position.y = GROUND_Y;
+          }
+        }
+
+        // Highlight HUD lane indicator
+        if (this.root.position.y > 7.0) {
+          highlightActiveLaneUI(3);
+        } else if (this.root.position.y > 3.2) {
+          highlightActiveLaneUI(2);
+        } else {
+          highlightActiveLaneUI(1);
+        }
+      },
+
+      jumpToLane(laneNum) {
+        SoundEngine.playJump();
+        const GROUND_Y = 1.45;
+
+        if (laneNum === 1) {
+          if (this.root.position.y > GROUND_Y) {
+            this.isJumping = true;
+            this.yVelocity = -0.6; // Quick dive to ground
+          }
+        } else if (laneNum === 2) {
+          this.isJumping = true;
+          this.yVelocity = 0.76; // Mid plank
+        } else if (laneNum === 3) {
+          this.isJumping = true;
+          this.yVelocity = 1.05; // High plank
+        }
+      },
+
+      jumpStandard() {
+        this.isJumping = true;
+        if (this.root.position.y < 3.0) {
+          this.yVelocity = 0.76;
+        } else if (this.root.position.y < 7.0) {
+          this.yVelocity = 0.78;
+        } else {
+          this.yVelocity = 0.45;
+        }
+        SoundEngine.playJump();
+      },
+
+      celebrateCheer() {
+        SoundEngine.playEatYum();
+        this.isJumping = true;
+        this.yVelocity = 0.55;
+      }
+    };
+
+    const laneDeckHeights = [0.0, 4.4, 8.4]; 
+    const platformGroup = new THREE.Group();
+    scene.add(platformGroup);
+
+    const earthMat = new THREE.MeshStandardMaterial({ color: 0x9A3412, roughness: 0.65 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0xD97706, roughness: 0.5 });
+    const woodSlatMat = new THREE.MeshStandardMaterial({ color: 0xB45309, roughness: 0.45 });
+    const grassTopMat = new THREE.MeshStandardMaterial({ color: 0x15803D, roughness: 0.4 });
+    const boltMat = new THREE.MeshStandardMaterial({ color: 0xFEF08A, roughness: 0.3, metalness: 0.2 });
+
+    function createGroundSegment(width) {
+      const grp = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(width, 4.0, 8.0), earthMat);
+      body.position.y = -2.0;
+      body.receiveShadow = true;
+      grp.add(body);
+
+      const grass = new THREE.Mesh(new THREE.BoxGeometry(width + 0.2, 0.45, 8.2), grassTopMat);
+      grass.position.y = -0.05;
+      grass.receiveShadow = true;
+      grp.add(grass);
+
+      for (let p = 0; p < 4; p++) {
+        const pebble = new THREE.Mesh(
+          new THREE.SphereGeometry(0.25, 8, 6),
+          new THREE.MeshLambertMaterial({ color: 0xE2E8F0 })
+        );
+        pebble.scale.set(1.5, 0.35, 1.2);
+        pebble.position.set(-width / 2 + p * (width / 4) + 1.5, 0.15, (p % 2 === 0 ? 1 : -1) * 1.5);
+        grp.add(pebble);
+      }
+      return grp;
+    }
+
+    const groundRunways = [];
+    const SECTION_WIDTH = 26;
+    for (let s = 0; s < 4; s++) {
+      const seg = createGroundSegment(SECTION_WIDTH);
+      seg.position.set(s * SECTION_WIDTH - 20, 0, 0);
+      platformGroup.add(seg);
+      groundRunways.push(seg);
+    }
+
+    function createFloatingPlankIsland(deckY, laneIndex) {
+      const plankGroup = new THREE.Group();
+
+      if (laneIndex === 1) {
+        const turf = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.4, 0.18, 16), grassTopMat);
+        turf.position.y = deckY + 0.08;
+        turf.receiveShadow = true;
+        plankGroup.add(turf);
+        return plankGroup;
+      }
+
+      const PLANK_LENGTH = 6.8;
+      const PLANK_WIDTH = 4.2;
+      const PLANK_THICKNESS = 0.5;
+
+      const plank = new THREE.Mesh(
+        new THREE.BoxGeometry(PLANK_LENGTH, PLANK_THICKNESS, PLANK_WIDTH),
+        woodMat
+      );
+      plank.position.y = deckY - (PLANK_THICKNESS / 2);
+      plank.castShadow = true;
+      plank.receiveShadow = true;
+      plankGroup.add(plank);
+
+      for (let s = -2; s <= 2; s++) {
+        const slat = new THREE.Mesh(
+          new THREE.BoxGeometry(0.3, PLANK_THICKNESS + 0.06, PLANK_WIDTH + 0.1),
+          woodSlatMat
+        );
+        slat.position.set(s * 1.3, deckY - (PLANK_THICKNESS / 2), 0);
+        plankGroup.add(slat);
+      }
+
+      [[-2.8, -1.6], [2.8, -1.6], [-2.8, 1.6], [2.8, 1.6]].forEach(([bx, bz]) => {
+        const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8), boltMat);
+        bolt.position.set(bx, deckY + 0.02, bz);
+        plankGroup.add(bolt);
+      });
+
+      // Craft Yoshi balloons holding the plank in the air
+      const balloonColors = [0xEF4444, 0x3B82F6, 0xF59E0B];
+      [-2.6, 2.6].forEach((bx, bIdx) => {
+        const string = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.025, 0.025, 1.5, 6),
+          new THREE.MeshBasicMaterial({ color: 0xFFFFFF })
+        );
+        string.position.set(bx, deckY + 0.75, -1.2);
+        plankGroup.add(string);
+
+        const balloonMat = new THREE.MeshStandardMaterial({
+          color: balloonColors[(laneIndex + bIdx) % balloonColors.length],
+          roughness: 0.25
+        });
+        const balloon = new THREE.Mesh(new THREE.SphereGeometry(0.65, 14, 12), balloonMat);
+        balloon.scale.set(0.9, 1.25, 0.9);
+        balloon.position.set(bx, deckY + 1.85, -1.2);
+        plankGroup.add(balloon);
+      });
+
+      return plankGroup;
+    }
+
+    function createNumberBadgeTexture(numberText, bgColor = '#FEF08A', textColor = '#0F172A') {
+      const cvs = document.createElement('canvas');
+      cvs.width = 256;
+      cvs.height = 256;
+      const ctx = cvs.getContext('2d');
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(128, 128, 120, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = bgColor;
+      ctx.beginPath();
+      ctx.arc(128, 128, 105, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#D97706';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(128, 128, 92, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = textColor;
+      ctx.font = '900 115px Quicksand, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(numberText, 128, 138);
+
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    const TargetManager = {
+      clusters: [],
+      scrollSpeed: 4.8,
+
+      spawnChallenge(targetNumber, choices) {
+        this.clearClusters();
+
+        choices.forEach((choiceVal, idx) => {
+          const laneIndex = idx + 1;
+          const clusterGrp = new THREE.Group();
+          const deckY = laneDeckHeights[idx];
+          const startX = 14 + (idx * 6.5);
+
+          const floatingPlank = createFloatingPlankIsland(deckY, laneIndex);
+          clusterGrp.add(floatingPlank);
+
+          const edibleGroup = new THREE.Group();
+
+          const basketMat = new THREE.MeshStandardMaterial({ color: 0xF59E0B, roughness: 0.45 });
+          const basket = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 0.85, 14), basketMat);
+          basket.position.set(0, deckY + 0.42, 0);
+          basket.castShadow = true;
+          edibleGroup.add(basket);
+
+          const leafMat = new THREE.MeshStandardMaterial({ color: 0x22C55E, roughness: 0.3 });
+          for (let l = 0; l < Math.min(choiceVal, 7); l++) {
+            const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), leafMat);
+            leaf.scale.set(1.4, 0.6, 1.2);
+            leaf.position.set(
+              Math.sin(l * 1.3) * 0.65,
+              deckY + 0.85 + (l * 0.12),
+              Math.cos(l * 1.3) * 0.55
+            );
+            leaf.castShadow = true;
+            edibleGroup.add(leaf);
+          }
+
+          const isCorrect = (choiceVal === targetNumber);
+          const badgeMat = new THREE.MeshBasicMaterial({
+            map: createNumberBadgeTexture(
+              choiceVal.toString(),
+              isCorrect ? '#FEF08A' : '#E0F2FE',
+              isCorrect ? '#78350F' : '#0369A1'
+            ),
+            transparent: true,
+            side: THREE.DoubleSide
+          });
+          const badge = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), badgeMat);
+          badge.position.set(0, deckY + 2.4, 0.8);
+          edibleGroup.add(badge);
+
+          clusterGrp.add(edibleGroup);
+
+          clusterGrp.userData = {
+            value: choiceVal,
+            isCorrect: isCorrect,
+            lane: laneIndex,
+            badge: badge,
+            edibleGroup: edibleGroup,
+            collected: false,
+            cooldownTimer: 0,
+            wobbleTimer: 0
+          };
+
+          clusterGrp.position.set(startX, 0, 0);
+          scene.add(clusterGrp);
+          this.clusters.push(clusterGrp);
+        });
+      },
+
+      clearClusters() {
+        this.clusters.forEach(c => {
+          scene.remove(c);
+        });
+        this.clusters = [];
+      },
+
+      update(delta) {
+        if (!State.isPlaying) return;
+
+        groundRunways.forEach(seg => {
+          seg.position.x -= TargetManager.scrollSpeed * delta;
+          if (seg.position.x < -36) {
+            seg.position.x += SECTION_WIDTH * 4;
+          }
+        });
+
+        clouds.forEach(cl => {
+          cl.position.x -= (TargetManager.scrollSpeed * 0.25) * delta;
+          if (cl.position.x < -45) {
+            cl.position.x = 45;
+          }
+        });
+
+        this.clusters.forEach(cluster => {
+          cluster.position.x -= TargetManager.scrollSpeed * delta;
+
+          if (cluster.userData.cooldownTimer > 0) {
+            cluster.userData.cooldownTimer -= delta;
+          }
+
+          if (cluster.userData.wobbleTimer > 0) {
+            cluster.userData.wobbleTimer -= delta;
+            cluster.userData.edibleGroup.rotation.z = Math.sin(cluster.userData.wobbleTimer * 30) * 0.25;
+          } else {
+            cluster.userData.edibleGroup.rotation.z = 0;
+          }
+
+          const laneDeckY = laneDeckHeights[cluster.userData.lane - 1];
+          cluster.userData.badge.position.y = (laneDeckY + 2.4) + Math.sin(Date.now() * 0.005 + cluster.userData.lane) * 0.12;
+
+          const dinoNoseX = Dino.root.position.x + 0.4;
+          const dist = Math.abs(cluster.position.x - dinoNoseX);
+          const targetDeckY = laneDeckY + 1.45;
+          const heightDiff = Math.abs(Dino.root.position.y - targetDeckY);
+
+          if (dist < 1.7 && heightDiff < 1.6 && !cluster.userData.collected) {
+            if (cluster.userData.isCorrect) {
+              cluster.userData.collected = true;
+              this.handleCorrect(cluster);
+            } else if (cluster.userData.cooldownTimer <= 0) {
+              cluster.userData.cooldownTimer = 1.0;
+              this.handleMistake(cluster);
+            }
+          }
+
+          if (cluster.position.x < -18 && !cluster.userData.collected && cluster.userData.isCorrect) {
+            cluster.position.x = 18;
+          }
+        });
+      },
+
+      handleCorrect(cluster) {
+        Dino.celebrateCheer();
+        spawnStarBursts(Dino.root.position.x + 0.5, Dino.root.position.y + 0.8, 0);
+
+        cluster.userData.edibleGroup.visible = false;
+        State.score++;
+        State.completedRuns++;
+
+        updateProgressUI();
+
+        if (State.completedRuns >= State.targetGoal) {
+          setTimeout(() => {
+            triggerVictory();
+          }, 800);
+        } else {
+          setTimeout(() => {
+            generateNextQuestion();
+          }, 900);
+        }
+      },
+
+      handleMistake(cluster) {
+        SoundEngine.playWobble();
+        cluster.userData.wobbleTimer = 0.45;
+      }
+    };
+
+    const starParticles = [];
+    const starMat = new THREE.MeshBasicMaterial({ color: 0xFBBF24 });
+    const starGeo = new THREE.SphereGeometry(0.2, 8, 8);
+
+    function spawnStarBursts(x, y, z) {
+      for (let i = 0; i < 16; i++) {
+        const star = new THREE.Mesh(starGeo, starMat);
+        star.position.set(x, y, z);
+        const theta = Math.random() * Math.PI * 2;
+        const speed = 2.5 + Math.random() * 4.5;
+        star.userData = {
+          vx: Math.cos(theta) * speed,
+          vy: Math.sin(theta) * speed + 2.5,
+          vz: (Math.random() - 0.5) * 2,
+          life: 1.0
+        };
+        scene.add(star);
+        starParticles.push(star);
+      }
+    }
+
+    function updateParticles(delta) {
+      for (let i = starParticles.length - 1; i >= 0; i--) {
+        const p = starParticles[i];
+        p.position.x += p.userData.vx * delta;
+        p.position.y += p.userData.vy * delta;
+        p.position.z += p.userData.vz * delta;
+        p.userData.vy -= 9.8 * delta;
+        p.userData.life -= delta * 1.5;
+        p.scale.setScalar(Math.max(0.01, p.userData.life));
+
+        if (p.userData.life <= 0) {
+          scene.remove(p);
+          starParticles.splice(i, 1);
+        }
+      }
+    }
+
+    function generateNextQuestion() {
+      let targetVal, aVal = null, bVal = null;
+
+      if (State.tier === 1) {
+        targetVal = Math.floor(Math.random() * 5) + 1;
+      } else {
+        aVal = Math.floor(Math.random() * 5) + 1;
+        bVal = Math.floor(Math.random() * 4) + 1;
+        targetVal = aVal + bVal;
+      }
+
+      const distractors = new Set([targetVal]);
+      while (distractors.size < 3) {
+        const maxVal = State.tier === 1 ? 5 : 10;
+        const dist = Math.floor(Math.random() * maxVal) + 1;
+        distractors.add(dist);
+      }
+
+      const choices = Array.from(distractors).sort(() => Math.random() - 0.5);
+      State.currentQuestion = { target: targetVal, choices: choices, a: aVal, b: bVal };
+
+      updatePromptDisplay();
+      TargetManager.spawnChallenge(targetVal, choices);
+    }
+
+    function updateProgressUI() {
+      const pContainer = document.getElementById('progress-indicators');
+      if (!pContainer) return;
+      pContainer.innerHTML = '';
+      for (let i = 0; i < State.targetGoal; i++) {
+        const filled = i < State.completedRuns;
+        const starSvg = `
+          <svg class="w-5 h-5 ${filled ? 'fill-amber-500 scale-110' : 'fill-slate-300 opacity-60'} transition-transform drop-shadow" viewBox="0 0 24 24">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+          </svg>
+        `;
+        pContainer.insertAdjacentHTML('beforeend', starSvg);
+      }
+    }
+
+    function startGame() {
+      SoundEngine.init();
+      State.completedRuns = 0;
+      State.score = 0;
+      State.isPlaying = true;
+
+      document.getElementById('front-screen').classList.add('hidden');
+      document.getElementById('game-hud').classList.remove('hidden');
+      document.getElementById('victory-modal').classList.add('hidden');
+
+      Dino.currentLane = 1;
+      Dino.isJumping = false;
+      Dino.yVelocity = 0;
+      Dino.root.position.set(-5, 1.45, 0);
+      highlightActiveLaneUI(1);
+
+      updateProgressUI();
+      generateNextQuestion();
+    }
+
+    function triggerVictory() {
+      State.isPlaying = false;
+      SoundEngine.playWinFanfare();
+
+      if (State.score > State.highScore) {
+        State.highScore = State.score;
+        SafeStorage.set('kindy_dino_hiscore', State.highScore.toString());
+      }
+
+      const scoreNumEl = document.getElementById('vic-score-num');
+      if (scoreNumEl) {
+        scoreNumEl.textContent = `${State.score} / ${State.targetGoal} ★`;
+      }
+      document.getElementById('victory-modal').classList.remove('hidden');
+
+      for (let k = 0; k < 40; k++) {
+        spawnStarBursts(
+          (Math.random() - 0.5) * 12,
+          2 + Math.random() * 6,
+          (Math.random() - 0.5) * 4
+        );
+      }
+    }
+
+    function returnToFrontMenu() {
+      State.isPlaying = false;
+      TargetManager.clearClusters();
+      document.getElementById('game-hud').classList.add('hidden');
+      document.getElementById('victory-modal').classList.add('hidden');
+      document.getElementById('front-screen').classList.remove('hidden');
+      applyTranslations();
+    }
+
+    document.getElementById('btn-lang-bm').addEventListener('click', () => {
+      SoundEngine.init();
+      State.lang = 'bm';
+      applyTranslations();
+    });
+
+    document.getElementById('btn-lang-en').addEventListener('click', () => {
+      SoundEngine.init();
+      State.lang = 'en';
+      applyTranslations();
+    });
+
+    const tier1Btn = document.getElementById('btn-tier-1');
+    const tier2Btn = document.getElementById('btn-tier-2');
+
+    tier1Btn.addEventListener('click', () => {
+      SoundEngine.init();
+      State.tier = 1;
+      tier1Btn.classList.add('ring-4', 'ring-emerald-400', 'border-emerald-500', 'bg-white');
+      tier1Btn.classList.remove('opacity-90', 'bg-amber-50/70');
+      tier2Btn.classList.remove('ring-4', 'ring-emerald-400', 'border-emerald-500', 'bg-white');
+      tier2Btn.classList.add('opacity-90', 'bg-amber-50/70');
+    });
+
+    tier2Btn.addEventListener('click', () => {
+      SoundEngine.init();
+      State.tier = 2;
+      tier2Btn.classList.add('ring-4', 'ring-emerald-400', 'border-emerald-500', 'bg-white');
+      tier2Btn.classList.remove('opacity-90', 'bg-amber-50/70');
+      tier1Btn.classList.remove('ring-4', 'ring-emerald-400', 'border-emerald-500', 'bg-white');
+      tier1Btn.classList.add('opacity-90', 'bg-amber-50/70');
+    });
+
+    document.getElementById('btn-toggle-sound').addEventListener('click', () => {
+      State.soundOn = !State.soundOn;
+      SoundEngine.enabled = State.soundOn;
+      document.getElementById('icon-sound-on').classList.toggle('hidden', !State.soundOn);
+      document.getElementById('icon-sound-off').classList.toggle('hidden', State.soundOn);
+    });
+
+    document.getElementById('btn-jump-action').addEventListener('click', () => {
+      if (State.isPlaying) Dino.jumpStandard();
+    });
+
+    document.getElementById('btn-lane-1').addEventListener('click', () => {
+      if (State.isPlaying) Dino.jumpToLane(1);
+    });
+    document.getElementById('btn-lane-2').addEventListener('click', () => {
+      if (State.isPlaying) Dino.jumpToLane(2);
+    });
+    document.getElementById('btn-lane-3').addEventListener('click', () => {
+      if (State.isPlaying) Dino.jumpToLane(3);
+    });
+
+    document.getElementById('btn-start-game').addEventListener('click', startGame);
+    document.getElementById('btn-back-menu').addEventListener('click', returnToFrontMenu);
+    document.getElementById('btn-replay').addEventListener('click', startGame);
+    document.getElementById('btn-home-from-vic').addEventListener('click', returnToFrontMenu);
+
+    window.addEventListener('keydown', (e) => {
+      if (!State.isPlaying) return;
+      if (e.code === 'Space' || e.key === ' ') {
+        Dino.jumpStandard();
+      } else if (e.key === '1') {
+        Dino.jumpToLane(1);
+      } else if (e.key === '2') {
+        Dino.jumpToLane(2);
+      } else if (e.key === '3') {
+        Dino.jumpToLane(3);
+      } else if (e.key === 'ArrowUp') {
+        Dino.jumpStandard();
+      } else if (e.key === 'ArrowDown') {
+        Dino.jumpToLane(1);
+      }
+    });
+
+    container.addEventListener('pointerdown', (e) => {
+      if (!State.isPlaying) return;
+      const rect = container.getBoundingClientRect();
+      const clickY = e.clientY - rect.top;
+      if (clickY < rect.height * 0.35) {
+        Dino.jumpToLane(3);
+      } else if (clickY < rect.height * 0.65) {
+        Dino.jumpToLane(2);
+      } else {
+        Dino.jumpStandard();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
+
+      Dino.update(delta);
+      TargetManager.update(delta);
+      updateParticles(delta);
+
+      renderer.render(scene, camera);
+    }
+
+    window.onload = function() {
+      Dino.init();
+      applyTranslations();
+      animate();
+    };
+  </script>
+</body>
+</html>
